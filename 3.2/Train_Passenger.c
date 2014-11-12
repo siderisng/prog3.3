@@ -12,7 +12,7 @@ void Train();
 void * Passenger();
 
 
-int timesToRun, passLeft,noBoard, noRide, rideFlag, capacity, flag, startFlag;
+int timesToRun, passLeft,noBoard, noRide, rideFlag, capacity, flag, startFlag, endflag;
 pthread_mutex_t entry, ride, end;
 pthread_cond_t toBoard, toStart;
 
@@ -22,6 +22,7 @@ int main (int argc, char* argv[]){
 	int i, noPass, thrCheck;
 	pthread_t *pasThread;
 	
+	endflag=0;
 	startFlag =1;
 	noBoard=0;
 	flag=0;
@@ -88,10 +89,15 @@ int main (int argc, char* argv[]){
 	
 	
 	pthread_mutex_lock (&end);	//blokarisma mexri na oloklirwthei i diadikasia
-		//diagrafi twn mutexes
+	
+	printf ("WHAATT?!?!? This place is empty :(\n");
+	printf ("I'll be better going home\n");
+	//diagrafi twn mutexes
 	pthread_mutex_destroy (&entry);
 	pthread_mutex_destroy (&ride);
-	
+	pthread_mutex_destroy (&end);
+	pthread_cond_destroy (&toStart);
+	pthread_cond_destroy (&toBoard);
 	
 	free (pasThread);		//apeleftherwsi xwrou tou pinaka twn threads
 	return (0);
@@ -100,25 +106,17 @@ int main (int argc, char* argv[]){
 
 
 void  Train(){
-	int i;
 
-		if (flag==1){
-			printf ("Returning back\n");
-			for (i=0; i<3; i++){
-				sleep (1);
-				printf (".\n");
-			}
-			flag=0;
-		}
+
 	
-		printf ("Starting Ride \n" );
+	printf ("YOOHOO\n");
 		
 	
 	
 }
 
 void *Passenger(){
-	
+	int i;
 	
 	pthread_mutex_lock (&entry);		//blokarisma twn epivatwn mexri na vevaiwthoume oti xwrane
 	
@@ -140,18 +138,42 @@ void *Passenger(){
 	
 	if (noRide==capacity){
 		
-		Train();
-		
+		printf ("Starting Train\n");
+		timesToRun--;
 	}
+	Train ();
 	noRide--;
 	
+	if (noRide!=0){
+		pthread_cond_signal (&toBoard);
+		pthread_cond_wait (&toStart, &entry);
+	}
+	else {
+		noRide=capacity;
+	}
 	
-	
+	pthread_cond_signal (&toStart);
 	printf ("Leaving Train... So Sad\n");
-	
+	noRide--;
 	
 	if (noRide==0){
-		flag=1;
+		printf ("Returning Back\n");
+			for (i=0; i<3; i++){
+				sleep (1);
+				printf (".\n");
+			}
+		
+		
+		if ((timesToRun==0)&&(noRide==0)&&(passLeft==0)){
+			
+			pthread_mutex_unlock (&end);
+			
+		}else if ((timesToRun==0)&&(passLeft!=0)){
+			capacity = passLeft;
+			endflag=1;
+		}else if (endflag==1){
+			pthread_mutex_unlock (&end);
+		}
 		noRide=capacity;
 		
 		if (noBoard>=capacity){
@@ -161,11 +183,8 @@ void *Passenger(){
 		}
 		
 	}
-	printf ("%d\n", noRide);
-	if (noRide!=capacity){
-		pthread_cond_signal (&toBoard);
-	}
-	printf ("%d\n", noBoard);
+	
+	
 	pthread_mutex_unlock (&entry);
 	
 	return (NULL);
