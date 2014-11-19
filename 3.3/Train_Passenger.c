@@ -7,9 +7,9 @@
 
 #define trainCap 10			//Train Capacity
 
-//This complex function is used to simulate the passengers reaction when he/she rides the train
+
 void Train();
-//Passenger's actions when he wants to board on train
+
 void * Passenger();
 
 void synch_beg();
@@ -23,21 +23,14 @@ void synch_notifyAll();
 void synch_end();
 
 int timesToRun, passLeft;
-//timesToRun-> given the number of passengers, the number of rides to serve them all
-//passLeft-> how many passengers will board the train in the last ride
-int noBoard, noRide;
-//noBoard-> #passengers waiting to ride train
-//noRide-> #passenger riding Train
-int rideFlag, endflag;
-//rideFlag-> used to block cars when appropriate
-//endflag-> used to signal the final ride
-int capacity;//capacity of train
+
+int noBoard;
+
+int capacity;
 
 int thosePassed, countBlock, countWait;
 
 pthread_mutex_t mtxBlock, mtxBusy, end, check, mtxMonitor;
-// mutex entry used for monitor Entry
-
 
 int main (int argc, char* argv[]){
 	int i, noPass, thrCheck; //noPass-> used to read the total number of passengers
@@ -47,9 +40,8 @@ int main (int argc, char* argv[]){
 	thosePassed=1;
 	countBlock=0;
 	countWait=0;
-	//initialize flags
-	endflag=0;
-	rideFlag=1;
+
+
 	
 	//read input from user (#passengers)
 	printf ("How many passengers? ");
@@ -64,18 +56,26 @@ int main (int argc, char* argv[]){
 	//initialize counters noBoard, noRide and trainCap
 	if (timesToRun!=0){
 		capacity= trainCap;
-		noRide=capacity;
+		
 	}
 	// if there are not enough passengers (#passengers< capacity) change capacity to the appropriate number
 	else{
 		capacity= passLeft;
-		noRide=passLeft;
-		endflag=1;
+		
+		
 	}
 	noBoard=0;
 	
 	
 	//initialize mutexes
+	if (pthread_mutex_init(&check, NULL) != 0)	
+	{
+		perror ("Mutex error");
+		return 1;
+	}
+	
+	
+	
 	if (pthread_mutex_init(&mtxMonitor, NULL) != 0)	
 	{
 		perror ("Mutex error");
@@ -89,20 +89,14 @@ int main (int argc, char* argv[]){
 	}
 	pthread_mutex_lock (&mtxBusy);
 	
-		if (pthread_mutex_init(&end, NULL) != 0)	
+	if (pthread_mutex_init(&mtxBlock, NULL) != 0)	
 	{
 		perror ("Mutex error");
 		return 1;
 	}
-	pthread_mutex_lock (&end);
-	
-	
-	//initialize conditions
-
-
-	
-
 	pthread_mutex_lock (&mtxBlock);
+	
+	
 	
 	//initialize threads
 	if (NULL==(pasThread= (pthread_t*)malloc(sizeof(pthread_t)*noPass))) //allocate memory space for threads
@@ -130,10 +124,16 @@ int main (int argc, char* argv[]){
 		pthread_join(pasThread[i], NULL);
 	} // wait till there are no more passengers
 	
+	
+	
 	printf ("WHAATT?!?!? This place is empty :(\n");
 	printf ("I'll be better going home\n");
 	//destroy mutexes/conditions
 
+	pthread_mutex_destroy (&mtxMonitor);
+	pthread_mutex_destroy (&mtxBlock);
+	pthread_mutex_destroy (&mtxBusy);
+	pthread_mutex_destroy (&check);
 	
 	free (pasThread);		//free allocated space
 	return (0);
